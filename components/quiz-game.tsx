@@ -30,6 +30,7 @@ export function QuizGame({ user }: QuizGameProps) {
   const [timeLeft, setTimeLeft] = useState(60)
   const [timerActive, setTimerActive] = useState(false)
   const [showCorrectAnswers, setShowCorrectAnswers] = useState(false)
+  const [gameStarting, setGameStarting] = useState(false)
 
   // Timer effect
   useEffect(() => {
@@ -54,7 +55,23 @@ export function QuizGame({ user }: QuizGameProps) {
   }
 
   const startNewGame = async () => {
+    if (gameStarting) return // Prevent double clicks
+
+    setGameStarting(true)
+    setLoading(true)
+
     try {
+      // Reset all game state first
+      setCurrentPair(null)
+      setSessionId(null)
+      setScore(0)
+      setTotalAttempts(0)
+      setGameOver(false)
+      setFeedback(null)
+      setShowCorrectAnswers(false)
+      setTimerActive(false)
+      setTimeLeft(60)
+
       const response = await fetch("/api/quiz/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -64,15 +81,30 @@ export function QuizGame({ user }: QuizGameProps) {
       if (response.ok) {
         const data = await response.json()
         setSessionId(data.sessionId)
-        setScore(0)
-        setTotalAttempts(0)
-        setGameOver(false)
-        setFeedback(null)
-        setShowCorrectAnswers(false)
-        await getNextQuestion()
+
+        // Get the first question
+        const questionResponse = await fetch("/api/quiz", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId: data.sessionId }),
+        })
+
+        if (questionResponse.ok) {
+          const questionData = await questionResponse.json()
+          if (questionData.clubPair) {
+            setCurrentPair(questionData.clubPair)
+            setTimeLeft(60)
+            setTimerActive(true)
+          } else {
+            setGameOver(true)
+          }
+        }
       }
     } catch (error) {
       console.error("Error starting game:", error)
+    } finally {
+      setLoading(false)
+      setGameStarting(false)
     }
   }
 
@@ -223,16 +255,16 @@ export function QuizGame({ user }: QuizGameProps) {
             )}
           </div>
 
-          <Button onClick={startNewGame} size="lg" className="w-full">
+          <Button onClick={startNewGame} size="lg" className="w-full" disabled={gameStarting}>
             <Zap className="w-4 h-4 mr-2" />
-            Play Again
+            {gameStarting ? "Starting..." : "Play Again"}
           </Button>
         </CardContent>
       </Card>
     )
   }
 
-  if (!currentPair) {
+  if (!currentPair || loading) {
     return (
       <Card className="w-full max-w-2xl mx-auto shadow-lg">
         <CardHeader className="text-center bg-gradient-to-r from-blue-50 to-green-50">
@@ -241,14 +273,23 @@ export function QuizGame({ user }: QuizGameProps) {
         </CardHeader>
         <CardContent className="text-center py-12">
           <div className="space-y-4">
-            <div className="text-6xl">🏆</div>
-            <p className="text-lg text-gray-600 mb-6">
-              Name players who have played for both clubs. You have 60 seconds per question!
-            </p>
-            <Button onClick={startNewGame} size="lg" className="px-8">
-              <Target className="w-4 h-4 mr-2" />
-              Start New Game
-            </Button>
+            {loading || gameStarting ? (
+              <>
+                <div className="text-6xl animate-spin">⚽</div>
+                <p className="text-lg text-gray-600">Loading game...</p>
+              </>
+            ) : (
+              <>
+                <div className="text-6xl">🏆</div>
+                <p className="text-lg text-gray-600 mb-6">
+                  Name players who have played for both clubs. You have 60 seconds per question!
+                </p>
+                <Button onClick={startNewGame} size="lg" className="px-8" disabled={gameStarting}>
+                  <Target className="w-4 h-4 mr-2" />
+                  {gameStarting ? "Starting..." : "Start New Game"}
+                </Button>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>

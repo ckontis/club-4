@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 
@@ -23,6 +23,14 @@ export function PlayerSearch({ onPlayerSelect, disabled = false }: PlayerSearchP
   const [players, setPlayers] = useState<Player[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(-1)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Focus input when component becomes enabled
+  useEffect(() => {
+    if (!disabled && inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [disabled])
 
   useEffect(() => {
     if (query.length < 2) {
@@ -85,6 +93,7 @@ export function PlayerSearch({ onPlayerSelect, disabled = false }: PlayerSearchP
       <form onSubmit={handleSubmit} className="flex gap-2">
         <div className="relative flex-1">
           <Input
+            ref={inputRef}
             type="text"
             placeholder="Enter player name..."
             value={query}

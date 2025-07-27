@@ -113,7 +113,7 @@ export function Leaderboard() {
 
   if (loading) {
     return (
-      <Card className="shadow-xl border-0">
+      <Card className="shadow-xl border-0 h-fit">
         <CardContent className="p-8">
           <div className="text-center space-y-4">
             <RefreshCw className="w-10 h-10 animate-spin mx-auto text-blue-500" />
@@ -125,7 +125,7 @@ export function Leaderboard() {
   }
 
   return (
-    <Card className="shadow-xl border-0 overflow-hidden">
+    <Card className="shadow-xl border-0 overflow-hidden h-fit">
       <CardHeader className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-700 text-white">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -161,31 +161,33 @@ export function Leaderboard() {
             </div>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-gray-100 max-h-[600px] overflow-y-auto">
             {leaderboard.map((entry, index) => (
               <div
                 key={entry.id}
-                className={`flex items-center justify-between p-6 transition-all duration-200 ${getRankBg(entry.rank)} ${
+                className={`flex items-center justify-between p-4 lg:p-6 transition-all duration-200 ${getRankBg(entry.rank)} ${
                   index === 0 ? "border-t-4 border-yellow-400" : ""
                 }`}
               >
-                <div className="flex items-center gap-5">
+                <div className="flex items-center gap-3 lg:gap-5 min-w-0 flex-1">
                   <div className="flex-shrink-0">{getRankIcon(entry.rank)}</div>
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className={`font-bold text-xl ${entry.rank <= 3 ? "text-gray-800" : "text-gray-700"}`}>
+                    <div className="flex items-center gap-2 lg:gap-3 mb-1 lg:mb-2 flex-wrap">
+                      <span
+                        className={`font-bold text-lg lg:text-xl truncate ${entry.rank <= 3 ? "text-gray-800" : "text-gray-700"}`}
+                      >
                         {entry.username}
                       </span>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 lg:gap-2 flex-wrap">
                         {entry.is_guest ? (
-                          <span className="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-full flex items-center gap-1 font-medium">
+                          <span className="px-2 lg:px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-full flex items-center gap-1 font-medium">
                             <User className="w-3 h-3" />
                             Guest
                           </span>
                         ) : (
-                          <span className="px-3 py-1 text-xs bg-green-100 text-green-800 rounded-full flex items-center gap-1 font-medium">
+                          <span className="px-2 lg:px-3 py-1 text-xs bg-green-100 text-green-800 rounded-full flex items-center gap-1 font-medium">
                             <Users className="w-3 h-3" />
                             Member
                           </span>
@@ -195,20 +197,20 @@ export function Leaderboard() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-2 lg:gap-4 text-xs lg:text-sm text-gray-600 flex-wrap">
                       <span className="flex items-center gap-1">
                         <Trophy className="w-3 h-3" />
                         {entry.total_sessions} game{entry.total_sessions !== 1 ? "s" : ""}
                       </span>
-                      <span>•</span>
-                      <span>Best streak: {entry.best_score}</span>
+                      <span className="hidden lg:inline">•</span>
+                      <span>Best: {entry.best_score}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="text-right flex-shrink-0">
+                <div className="text-right flex-shrink-0 ml-2">
                   <div
-                    className={`font-bold text-3xl ${
+                    className={`font-bold text-2xl lg:text-3xl ${
                       entry.rank === 1
                         ? "text-yellow-600"
                         : entry.rank === 2
@@ -220,8 +222,8 @@ export function Leaderboard() {
                   >
                     {entry.total_correct}
                   </div>
-                  <div className="text-sm text-gray-600 font-medium">{entry.average_percentage}% accuracy</div>
-                  <div className="text-xs text-gray-500 mt-1">{entry.total_attempts} total answers</div>
+                  <div className="text-xs lg:text-sm text-gray-600 font-medium">{entry.average_percentage}%</div>
+                  <div className="text-xs text-gray-500 mt-1 hidden lg:block">{entry.total_attempts} total</div>
                 </div>
               </div>
             ))}
@@ -229,8 +231,8 @@ export function Leaderboard() {
         )}
 
         {leaderboard.length > 0 && (
-          <div className="bg-gray-50 px-6 py-4 text-center">
-            <p className="text-sm text-gray-600">
+          <div className="bg-gray-50 px-4 lg:px-6 py-4 text-center">
+            <p className="text-xs lg:text-sm text-gray-600">
               🎯 Showing top {leaderboard.length} players • Play more games to climb the ranks!
             </p>
           </div>
