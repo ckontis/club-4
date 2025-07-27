@@ -109,12 +109,8 @@ export function PlayerSearch({ onPlayerSelect, disabled = false }: PlayerSearchP
     }
   }
 
-  const handleInputBlur = () => {
-    // Delay hiding suggestions to allow for clicks
-    setTimeout(() => {
-      setShowSuggestions(false)
-      setSelectedIndex(-1)
-    }, 150)
+  const handleSuggestionClick = (playerName: string) => {
+    handlePlayerSelect(playerName)
   }
 
   return (
@@ -126,12 +122,10 @@ export function PlayerSearch({ onPlayerSelect, disabled = false }: PlayerSearchP
             <Input
               ref={inputRef}
               type="text"
-              placeholder="Type player name (min 3 letters)..."
               value={query}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               onFocus={handleInputFocus}
-              onBlur={handleInputBlur}
               disabled={disabled}
               className="w-full pl-10 pr-4 py-3 text-lg border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
             />
@@ -148,7 +142,8 @@ export function PlayerSearch({ onPlayerSelect, disabled = false }: PlayerSearchP
                     className={`w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition-colors duration-150 ${
                       index === selectedIndex ? "bg-blue-100 border-blue-200" : ""
                     }`}
-                    onClick={() => handlePlayerSelect(player.name)}
+                    onMouseDown={(e) => e.preventDefault()} // Prevent input blur
+                    onClick={() => handleSuggestionClick(player.name)}
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
@@ -160,11 +155,6 @@ export function PlayerSearch({ onPlayerSelect, disabled = false }: PlayerSearchP
                     </div>
                   </button>
                 ))}
-              </div>
-
-              {/* Footer hint */}
-              <div className="bg-gray-50 px-4 py-2 text-xs text-gray-500 text-center border-t border-gray-100">
-                Use ↑↓ arrows to navigate, Enter to select
               </div>
             </div>
           )}
@@ -184,7 +174,7 @@ export function PlayerSearch({ onPlayerSelect, disabled = false }: PlayerSearchP
             <div className="absolute top-full left-0 right-0 bg-white border-2 border-gray-200 rounded-xl shadow-lg z-20 mt-2 p-4 text-center text-gray-500">
               <div className="flex items-center justify-center gap-2">
                 <Search className="w-4 h-4" />
-                <span>No players found for "{query}"</span>
+                <span>No players found</span>
               </div>
             </div>
           )}
@@ -198,13 +188,6 @@ export function PlayerSearch({ onPlayerSelect, disabled = false }: PlayerSearchP
           Submit
         </Button>
       </form>
-
-      {/* Input hint */}
-      {query.length > 0 && query.length < 3 && (
-        <div className="absolute top-full left-0 right-0 mt-2 text-xs text-gray-400 text-center">
-          Type at least 3 letters to see suggestions
-        </div>
-      )}
     </div>
   )
 }
