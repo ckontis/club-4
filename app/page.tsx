@@ -143,6 +143,31 @@ export default function Home() {
         )}
 
         {/* Enhanced Footer */}
+        <div className="text-center mt-16 space-y-4">
+          <div className="flex justify-center gap-8 text-sm text-gray-600">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span>Real-time scoring</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <span>Guest & member play</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+              <span>Live leaderboard</span>
+            </div>
+          </div>
+
+          <p className="text-gray-500 text-sm max-w-2xl mx-auto">
+            Challenge yourself with football transfer knowledge! Name players who have played for both clubs, compete
+            with others, and see how you rank among football quiz champions.
+          </p>
+
+          <div className="text-xs text-gray-400 pt-4 border-t border-gray-200 max-w-4xl mx-auto">
+            🎯 Simple dataset for testing • 🏆 Compete on the leaderboard • ⚡ 60-second challenges • 👥 Guest-friendly
+          </div>
+        </div>
       </div>
     </div>
   )
