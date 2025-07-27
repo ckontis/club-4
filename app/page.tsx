@@ -141,14 +141,6 @@ export default function Home() {
             </div>
           </div>
         )}
-
-        
-
-          <p className="text-gray-500 text-sm max-w-2xl mx-auto">
-            Challenge yourself with football transfer knowledge! Name players who have played for both clubs, compete
-            with others, and see how you rank among football quiz champions.
-          </p>
-
          
         
       </div>
