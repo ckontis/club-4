@@ -159,10 +159,30 @@ export function getPlayersForClubs(club1: string, club2: string): Player[] {
   return PLAYERS.filter((player) => player.clubs.includes(club1) && player.clubs.includes(club2))
 }
 
-export async function getRandomClubPair(excludeIds: number[] = []): Promise<ClubPair | null> {
-  const availablePairs = CLUB_PAIRS.filter((pair) => !excludeIds.includes(pair.id))
+export async function getRandomClubPair(userId?: string, excludeIds: number[] = []): Promise<ClubPair | null> {
+  let finalExcludeIds = [...excludeIds]
+
+  // If we have a userId, get their previously seen questions
+  if (userId) {
+    const userStats = fallbackUserStats.get(userId)
+    if (userStats && userStats.seen_questions) {
+      finalExcludeIds = [...finalExcludeIds, ...userStats.seen_questions]
+    }
+  }
+
+  const availablePairs = CLUB_PAIRS.filter((pair) => !finalExcludeIds.includes(pair.id))
 
   if (availablePairs.length === 0) {
+    // If user has seen all questions, reset their progress
+    if (userId) {
+      const userStats = fallbackUserStats.get(userId)
+      if (userStats) {
+        userStats.seen_questions = []
+        fallbackUserStats.set(userId, userStats)
+        // Try again with reset progress
+        return getRandomClubPair(userId, excludeIds)
+      }
+    }
     return null
   }
 
@@ -442,6 +462,7 @@ export async function updateUserStats(userId: string, username: string, sessionD
     total_sessions: 0,
     last_played: new Date().toISOString(),
     average_percentage: 0,
+    seen_questions: [], // Add this to track seen questions
   }
 
   // Update stats with the session data
@@ -452,6 +473,16 @@ export async function updateUserStats(userId: string, username: string, sessionD
   existing.last_played = sessionData.ended_at || new Date().toISOString()
   existing.average_percentage =
     existing.total_attempts > 0 ? Math.round((existing.total_correct / existing.total_attempts) * 100) : 0
+
+  // Add used questions to seen questions
+  if (sessionData.used_questions) {
+    existing.seen_questions = existing.seen_questions || []
+    sessionData.used_questions.forEach((questionId) => {
+      if (!existing.seen_questions.includes(questionId)) {
+        existing.seen_questions.push(questionId)
+      }
+    })
+  }
 
   fallbackUserStats.set(userId, existing)
   console.log("Updated user stats:", existing)

@@ -18,8 +18,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Session is not active" }, { status: 400 })
     }
 
-    // Get a random club pair, excluding already used ones
-    const clubPair = await getRandomClubPair(session.used_questions)
+    // Get a random club pair, excluding already used ones and user's seen questions
+    const clubPair = await getRandomClubPair(session.user_id, session.used_questions)
 
     if (!clubPair) {
       // No more questions available

@@ -5,7 +5,7 @@ import { QuizGame } from "@/components/quiz-game"
 import { Leaderboard } from "@/components/leaderboard"
 import { AuthForm } from "@/components/auth-form"
 import { Button } from "@/components/ui/button"
-import { LogOut, Trophy, Target, Zap } from "lucide-react"
+import { LogOut, Trophy } from "lucide-react"
 
 interface AppUser {
   id: string
@@ -77,31 +77,6 @@ export default function Home() {
           <p className="text-xl text-gray-600 mb-6 max-w-2xl mx-auto">
             Test your football knowledge! Name players who have played for both clubs and climb the leaderboard.
           </p>
-
-          {/* Stats Bar */}
-          <div className="flex justify-center gap-8 mb-8">
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2 text-blue-600 mb-1">
-                <Target className="w-5 h-5" />
-                <span className="font-bold text-lg">10</span>
-              </div>
-              <div className="text-sm text-gray-600">Club Pairs</div>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2 text-green-600 mb-1">
-                <LogOut className="w-5 h-5" />
-                <span className="font-bold text-lg">10</span>
-              </div>
-              <div className="text-sm text-gray-600">Players</div>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2 text-purple-600 mb-1">
-                <Zap className="w-5 h-5" />
-                <span className="font-bold text-lg">60s</span>
-              </div>
-              <div className="text-sm text-gray-600">Per Question</div>
-            </div>
-          </div>
 
           {/* User Status */}
           <div className="flex justify-center items-center gap-4 mb-8">
