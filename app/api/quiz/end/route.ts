@@ -9,10 +9,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Session ID is required" }, { status: 400 })
     }
 
+    console.log("Ending game for session:", sessionId)
+
     const session = await getQuizSession(sessionId)
     if (!session) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 })
     }
+
+    console.log("Found session:", session)
 
     // Mark session as ended
     const endedAt = new Date().toISOString()
@@ -21,11 +25,20 @@ export async function POST(request: Request) {
       ended_at: endedAt,
     })
 
-    // Update user stats if user exists
-    if (session.user_id && session.username) {
-      const updatedSession = { ...session, ended_at: endedAt, is_active: false }
-      await updateUserStats(session.user_id, session.username, updatedSession)
-      console.log("Updated stats for user:", session.username)
+    // Update the session object with the ended_at time
+    const finalSession = { ...session, ended_at: endedAt, is_active: false }
+
+    // ALWAYS update user stats when a game ends (for both registered users and guests)
+    if (finalSession.username) {
+      console.log("Updating stats for user:", finalSession.username)
+      await updateUserStats(
+        finalSession.user_id || finalSession.username, // Use username as ID if no user_id
+        finalSession.username,
+        finalSession,
+      )
+      console.log("Stats updated successfully")
+    } else {
+      console.log("No username found, skipping stats update")
     }
 
     return NextResponse.json({

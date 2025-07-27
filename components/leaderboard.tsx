@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Trophy, Medal, Award, RefreshCw } from "lucide-react"
+import { Trophy, Medal, Award, RefreshCw, User, Users, Crown, Star, Zap } from "lucide-react"
 
 interface LeaderboardEntry {
   id: string
   username: string
   is_guest: boolean
   total_correct: number
+  correct_answers: number // Alternative field name
   total_attempts: number
   average_percentage: number
   best_score: number
@@ -33,7 +34,14 @@ export function Leaderboard() {
       const response = await fetch("/api/leaderboard")
       const data = await response.json()
       console.log("Leaderboard API response:", data)
-      setLeaderboard(data.leaderboard || [])
+
+      // Normalize the data to handle both field names
+      const normalizedData = (data.leaderboard || []).map((entry: any) => ({
+        ...entry,
+        total_correct: entry.total_correct || entry.correct_answers || 0,
+      }))
+
+      setLeaderboard(normalizedData)
     } catch (error) {
       console.error("Error fetching leaderboard:", error)
       setLeaderboard([])
@@ -45,36 +53,71 @@ export function Leaderboard() {
   const getRankIcon = (rank: number) => {
     switch (rank) {
       case 1:
-        return <Trophy className="w-6 h-6 text-yellow-500" />
+        return <Crown className="w-7 h-7 text-yellow-500" />
       case 2:
         return <Medal className="w-6 h-6 text-gray-400" />
       case 3:
         return <Award className="w-6 h-6 text-orange-500" />
       default:
-        return <div className="w-6 h-6 flex items-center justify-center text-sm font-bold text-gray-500">#{rank}</div>
+        return (
+          <div className="w-7 h-7 flex items-center justify-center text-sm font-bold text-gray-500 bg-gray-100 rounded-full">
+            {rank}
+          </div>
+        )
     }
   }
 
   const getRankBg = (rank: number) => {
     switch (rank) {
       case 1:
-        return "bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-200"
+        return "bg-gradient-to-r from-yellow-50 via-yellow-100 to-yellow-50 border-yellow-300 shadow-lg"
       case 2:
-        return "bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200"
+        return "bg-gradient-to-r from-gray-50 via-gray-100 to-gray-50 border-gray-300 shadow-md"
       case 3:
-        return "bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200"
+        return "bg-gradient-to-r from-orange-50 via-orange-100 to-orange-50 border-orange-300 shadow-md"
       default:
-        return "bg-gray-50 border-gray-200"
+        return "bg-gradient-to-r from-white to-gray-50 border-gray-200 hover:shadow-md"
     }
+  }
+
+  const getPerformanceBadge = (percentage: number) => {
+    if (percentage >= 90) {
+      return (
+        <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full flex items-center gap-1">
+          <Star className="w-3 h-3" />
+          Legend
+        </span>
+      )
+    }
+    if (percentage >= 80) {
+      return (
+        <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full flex items-center gap-1">
+          <Zap className="w-3 h-3" />
+          Expert
+        </span>
+      )
+    }
+    if (percentage >= 70) {
+      return (
+        <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full flex items-center gap-1">
+          <Trophy className="w-3 h-3" />
+          Pro
+        </span>
+      )
+    }
+    if (percentage >= 60) {
+      return <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">Good</span>
+    }
+    return null
   }
 
   if (loading) {
     return (
-      <Card className="shadow-lg">
-        <CardContent className="p-6">
+      <Card className="shadow-xl border-0">
+        <CardContent className="p-8">
           <div className="text-center space-y-4">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-gray-400" />
-            <div>Loading leaderboard...</div>
+            <RefreshCw className="w-10 h-10 animate-spin mx-auto text-blue-500" />
+            <div className="text-lg font-medium text-gray-600">Loading leaderboard...</div>
           </div>
         </CardContent>
       </Card>
@@ -82,55 +125,114 @@ export function Leaderboard() {
   }
 
   return (
-    <Card className="shadow-lg">
-      <CardHeader className="bg-gradient-to-r from-blue-50 to-green-50">
+    <Card className="shadow-xl border-0 overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-700 text-white">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Trophy className="w-6 h-6 text-yellow-500" />
-            <CardTitle className="text-xl">Leaderboard</CardTitle>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-lg">
+              <Trophy className="w-6 h-6" />
+            </div>
+            <div>
+              <CardTitle className="text-2xl font-bold">Leaderboard</CardTitle>
+              <p className="text-blue-100 text-sm">Top football quiz champions</p>
+            </div>
           </div>
-          <Button onClick={fetchLeaderboard} variant="outline" size="sm">
+          <Button
+            onClick={fetchLeaderboard}
+            variant="outline"
+            size="sm"
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+          >
             <RefreshCw className="w-4 h-4" />
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="p-4">
+      <CardContent className="p-0">
         {leaderboard.length === 0 ? (
-          <div className="text-center text-gray-500 py-12 space-y-4">
-            <div className="text-6xl">🏆</div>
-            <div className="text-lg font-semibold">No scores yet!</div>
-            <div className="text-sm">Be the first to play and claim the top spot!</div>
+          <div className="text-center text-gray-500 py-16 px-8 space-y-6">
+            <div className="text-8xl">🏆</div>
+            <div>
+              <div className="text-2xl font-bold text-gray-700 mb-2">No champions yet!</div>
+              <div className="text-lg text-gray-600 mb-4">Be the first to claim the throne</div>
+              <div className="text-sm text-gray-500 max-w-md mx-auto">
+                Complete a football quiz to see your name on the leaderboard. Both registered users and guests can
+                compete for the top spot!
+              </div>
+            </div>
           </div>
         ) : (
-          <div className="space-y-3">
-            {leaderboard.map((entry) => (
+          <div className="divide-y divide-gray-100">
+            {leaderboard.map((entry, index) => (
               <div
                 key={entry.id}
-                className={`flex items-center justify-between p-4 rounded-lg border-2 transition-all hover:shadow-md ${getRankBg(entry.rank)}`}
+                className={`flex items-center justify-between p-6 transition-all duration-200 ${getRankBg(entry.rank)} ${
+                  index === 0 ? "border-t-4 border-yellow-400" : ""
+                }`}
               >
-                <div className="flex items-center gap-4">
-                  {getRankIcon(entry.rank)}
+                <div className="flex items-center gap-5">
+                  <div className="flex-shrink-0">{getRankIcon(entry.rank)}</div>
 
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-lg">{entry.username}</span>
-                      {entry.is_guest && (
-                        <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">Guest</span>
-                      )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className={`font-bold text-xl ${entry.rank <= 3 ? "text-gray-800" : "text-gray-700"}`}>
+                        {entry.username}
+                      </span>
+
+                      <div className="flex items-center gap-2">
+                        {entry.is_guest ? (
+                          <span className="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-full flex items-center gap-1 font-medium">
+                            <User className="w-3 h-3" />
+                            Guest
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 text-xs bg-green-100 text-green-800 rounded-full flex items-center gap-1 font-medium">
+                            <Users className="w-3 h-3" />
+                            Member
+                          </span>
+                        )}
+
+                        {getPerformanceBadge(entry.average_percentage)}
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      {entry.total_sessions} game{entry.total_sessions !== 1 ? "s" : ""} played
+
+                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                      <span className="flex items-center gap-1">
+                        <Trophy className="w-3 h-3" />
+                        {entry.total_sessions} game{entry.total_sessions !== 1 ? "s" : ""}
+                      </span>
+                      <span>•</span>
+                      <span>Best streak: {entry.best_score}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="text-right">
-                  <div className="font-bold text-2xl text-blue-600">{entry.total_correct}</div>
-                  <div className="text-sm text-gray-600">{entry.average_percentage}% avg</div>
-                  <div className="text-xs text-gray-500">Best: {entry.best_score}</div>
+                <div className="text-right flex-shrink-0">
+                  <div
+                    className={`font-bold text-3xl ${
+                      entry.rank === 1
+                        ? "text-yellow-600"
+                        : entry.rank === 2
+                          ? "text-gray-500"
+                          : entry.rank === 3
+                            ? "text-orange-500"
+                            : "text-blue-600"
+                    }`}
+                  >
+                    {entry.total_correct}
+                  </div>
+                  <div className="text-sm text-gray-600 font-medium">{entry.average_percentage}% accuracy</div>
+                  <div className="text-xs text-gray-500 mt-1">{entry.total_attempts} total answers</div>
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {leaderboard.length > 0 && (
+          <div className="bg-gray-50 px-6 py-4 text-center">
+            <p className="text-sm text-gray-600">
+              🎯 Showing top {leaderboard.length} players • Play more games to climb the ranks!
+            </p>
           </div>
         )}
       </CardContent>

@@ -1,13 +1,19 @@
 import { NextResponse } from "next/server"
-import { getLeaderboard } from "@/lib/database"
+import { getLeaderboard, addTestLeaderboardData } from "@/lib/database"
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    console.log("Fetching leaderboard...")
+    console.log("=== LEADERBOARD API CALLED ===")
+
+    // Check if we should add test data (for debugging)
+    const { searchParams } = new URL(request.url)
+    if (searchParams.get("test") === "true") {
+      addTestLeaderboardData()
+    }
 
     const leaderboard = await getLeaderboard(50)
 
-    console.log("Leaderboard fetched:", leaderboard.length, "entries")
+    console.log("Returning leaderboard with", leaderboard.length, "entries")
 
     return NextResponse.json({ leaderboard })
   } catch (error) {
@@ -18,6 +24,6 @@ export async function GET() {
         leaderboard: [], // Return empty array as fallback
       },
       { status: 200 },
-    ) // Return 200 with empty data instead of 500
+    )
   }
 }

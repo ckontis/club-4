@@ -349,6 +349,7 @@ export async function createQuizSession(userId?: string, username?: string): Pro
   }
 
   fallbackSessions.set(session.id, session)
+  console.log("Created quiz session for:", username || "anonymous")
   return session.id
 }
 
@@ -419,18 +420,22 @@ export async function updateQuizSession(sessionId: string, updates: Partial<Quiz
   if (session) {
     Object.assign(session, updates)
     fallbackSessions.set(sessionId, session)
+    console.log("Updated session:", sessionId, updates)
   }
 }
 
 // Update user stats when session ends
 export async function updateUserStats(userId: string, username: string, sessionData: QuizSession): Promise<void> {
-  const percentage =
-    sessionData.total_attempts > 0 ? (sessionData.correct_answers / sessionData.total_attempts) * 100 : 0
+  console.log("Updating user stats for:", username, "with session data:", sessionData)
+
+  // Get user info to determine if guest
+  const user = fallbackUsers.get(userId)
+  const isGuest = user?.is_guest || username.startsWith("Guest")
 
   const existing = fallbackUserStats.get(userId) || {
     id: userId,
     username,
-    is_guest: false,
+    is_guest: isGuest,
     total_correct: 0,
     total_attempts: 0,
     best_score: 0,
@@ -439,7 +444,7 @@ export async function updateUserStats(userId: string, username: string, sessionD
     average_percentage: 0,
   }
 
-  // Update stats
+  // Update stats with the session data
   existing.total_correct += sessionData.correct_answers
   existing.total_attempts += sessionData.total_attempts
   existing.best_score = Math.max(existing.best_score, sessionData.correct_answers)
@@ -449,24 +454,32 @@ export async function updateUserStats(userId: string, username: string, sessionD
     existing.total_attempts > 0 ? Math.round((existing.total_correct / existing.total_attempts) * 100) : 0
 
   fallbackUserStats.set(userId, existing)
-  console.log("Updated user stats for:", username, existing)
+  console.log("Updated user stats:", existing)
 }
 
 // Leaderboard
 export async function getLeaderboard(limit = 50): Promise<any[]> {
-  console.log("Getting leaderboard...")
-  console.log("Fallback user stats:", Array.from(fallbackUserStats.entries()))
-  console.log("Fallback sessions:", Array.from(fallbackSessions.entries()))
+  console.log("=== GETTING LEADERBOARD ===")
+  console.log("Fallback user stats entries:", fallbackUserStats.size)
 
+  // Get all stats from fallback storage
   const leaderboardData = Array.from(fallbackUserStats.values())
-    .filter((stats) => stats.total_correct > 0)
+    .filter((stats) => {
+      console.log("Checking stats for:", stats.username, "total_correct:", stats.total_correct)
+      return stats.total_correct > 0 // Only show users who have scored at least 1 point
+    })
     .sort((a, b) => {
+      // Sort by total correct first, then by average percentage, then by last played
       if (a.total_correct !== b.total_correct) return b.total_correct - a.total_correct
       if (a.average_percentage !== b.average_percentage) return b.average_percentage - a.average_percentage
       return new Date(b.last_played).getTime() - new Date(a.last_played).getTime()
     })
     .slice(0, limit)
-    .map((stats, index) => ({ ...stats, rank: index + 1 }))
+    .map((stats, index) => ({
+      ...stats,
+      rank: index + 1,
+      correct_answers: stats.total_correct, // Ensure the field name matches what the UI expects
+    }))
 
   console.log("Final leaderboard data:", leaderboardData)
   return leaderboardData
