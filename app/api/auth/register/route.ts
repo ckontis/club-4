@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server"
-import { createUser, initializeDatabase } from "@/lib/database"
+import { createUser } from "@/lib/database"
 import { hashPassword, generateToken } from "@/lib/auth"
 
 export async function POST(request: Request) {
   try {
-    await initializeDatabase()
-
     const { username, email, password } = await request.json()
 
     if (!username || !password) {
       return NextResponse.json({ error: "Username and password are required" }, { status: 400 })
+    }
+
+    if (username.length < 3) {
+      return NextResponse.json({ error: "Username must be at least 3 characters" }, { status: 400 })
     }
 
     // Hash password
@@ -21,6 +23,8 @@ export async function POST(request: Request) {
     if (!user) {
       return NextResponse.json({ error: "Username already exists" }, { status: 400 })
     }
+
+    console.log("User registered successfully:", user.username)
 
     // Generate token
     const token = generateToken({
@@ -49,6 +53,6 @@ export async function POST(request: Request) {
     return response
   } catch (error) {
     console.error("Registration error:", error)
-    return NextResponse.json({ error: "Failed to register" }, { status: 500 })
+    return NextResponse.json({ error: "Failed to register user" }, { status: 500 })
   }
 }

@@ -177,6 +177,9 @@ export async function initializeDatabase() {
   }
 
   try {
+    // Test connection first
+    await sql`SELECT 1`
+
     await sql`
       CREATE TABLE IF NOT EXISTS users (
         id VARCHAR(255) PRIMARY KEY,
@@ -206,6 +209,7 @@ export async function initializeDatabase() {
     return true
   } catch (error) {
     console.error("Database initialization error:", error)
+    console.log("Falling back to memory storage")
     return false
   }
 }
@@ -219,22 +223,29 @@ export async function createGuestUser(): Promise<User> {
     created_at: new Date().toISOString(),
   }
 
-  if (sql) {
+  const dbInitialized = await initializeDatabase()
+
+  if (dbInitialized && sql) {
     try {
       await sql`
         INSERT INTO users (id, username, is_guest)
         VALUES (${user.id}, ${user.username}, ${user.is_guest})
       `
+      console.log("Guest user created in database:", user.username)
     } catch (error) {
       console.error("Error creating guest user in database:", error)
     }
   }
 
+  // Always store in fallback
   fallbackUsers.set(user.id, user)
+  console.log("Guest user created in fallback storage:", user.username)
   return user
 }
 
 export async function createUser(username: string, email?: string, passwordHash?: string): Promise<User | null> {
+  const dbInitialized = await initializeDatabase()
+
   // Check if user exists in fallback first
   for (const [, user] of fallbackUsers) {
     if (user.username === username) {
@@ -251,7 +262,7 @@ export async function createUser(username: string, email?: string, passwordHash?
     created_at: new Date().toISOString(),
   }
 
-  if (sql) {
+  if (dbInitialized && sql) {
     try {
       const existingUser = await sql`SELECT id FROM users WHERE username = ${username}`
       if (existingUser.length > 0) {
@@ -262,12 +273,17 @@ export async function createUser(username: string, email?: string, passwordHash?
         INSERT INTO users (id, username, email, password_hash, is_guest)
         VALUES (${user.id}, ${username}, ${email || null}, ${passwordHash || null}, false)
       `
+
+      console.log("User created in database:", username)
     } catch (error) {
       console.error("Error creating user in database:", error)
+      // Continue to fallback storage
     }
   }
 
+  // Always store in fallback for reliability
   fallbackUsers.set(user.id, user)
+  console.log("User created in fallback storage:", username)
   return user
 }
 
@@ -407,7 +423,9 @@ export async function updateQuizSession(sessionId: string, updates: Partial<Quiz
 
 // Leaderboard
 export async function getLeaderboard(limit = 50): Promise<any[]> {
-  if (sql) {
+  const dbInitialized = await initializeDatabase()
+
+  if (dbInitialized && sql) {
     try {
       const result = await sql`
         SELECT 
@@ -423,12 +441,7 @@ export async function getLeaderboard(limit = 50): Promise<any[]> {
             WHEN SUM(qs.total_attempts) > 0 
             THEN ROUND((SUM(qs.correct_answers)::DECIMAL / SUM(qs.total_attempts) * 100), 1)
             ELSE 0 
-          END as average_percentage,
-          CASE 
-            WHEN MAX(qs.total_attempts) > 0 
-            THEN ROUND((MAX(qs.correct_answers)::DECIMAL / MAX(qs.total_attempts) * 100), 1)
-            ELSE 0 
-          END as best_percentage
+          END as average_percentage
         FROM users u
         LEFT JOIN quiz_sessions qs ON u.id = qs.user_id AND qs.ended_at IS NOT NULL
         GROUP BY u.id, u.username, u.is_guest, u.created_at
@@ -437,27 +450,30 @@ export async function getLeaderboard(limit = 50): Promise<any[]> {
         LIMIT ${limit}
       `
 
-      return result.map((row, index) => ({
-        id: row.id,
-        username: row.username,
-        is_guest: row.is_guest,
-        correct_answers: Number.parseInt(row.total_correct),
-        total_attempts: Number.parseInt(row.total_attempts),
-        average_percentage: Number.parseFloat(row.average_percentage),
-        best_score: Number.parseInt(row.best_score),
-        best_percentage: Number.parseFloat(row.best_percentage),
-        total_sessions: Number.parseInt(row.total_sessions),
-        last_played: row.last_played,
-        rank: index + 1,
-      }))
+      if (result.length > 0) {
+        return result.map((row, index) => ({
+          id: row.id,
+          username: row.username,
+          is_guest: row.is_guest,
+          correct_answers: Number.parseInt(row.total_correct),
+          total_attempts: Number.parseInt(row.total_attempts),
+          average_percentage: Number.parseFloat(row.average_percentage),
+          best_score: Number.parseInt(row.best_score),
+          total_sessions: Number.parseInt(row.total_sessions),
+          last_played: row.last_played,
+          rank: index + 1,
+        }))
+      }
     } catch (error) {
       console.error("Error getting leaderboard from database:", error)
     }
   }
 
-  // Fallback to memory storage
+  // Always use fallback storage
+  console.log("Using fallback storage for leaderboard")
   const userStats = new Map<string, any>()
 
+  // Process all completed sessions
   for (const [, session] of fallbackSessions) {
     if (!session.user_id || !session.ended_at) continue
 
@@ -484,13 +500,11 @@ export async function getLeaderboard(limit = 50): Promise<any[]> {
     userStats.set(session.user_id, existing)
   }
 
-  return Array.from(userStats.values())
+  const leaderboardData = Array.from(userStats.values())
     .filter((stats) => stats.total_correct > 0)
     .map((stats) => ({
       ...stats,
       average_percentage: stats.total_attempts > 0 ? Math.round((stats.total_correct / stats.total_attempts) * 100) : 0,
-      best_percentage:
-        stats.total_attempts > 0 ? Math.round((stats.best_score / Math.max(stats.total_attempts, 1)) * 100) : 0,
     }))
     .sort((a, b) => {
       if (a.total_correct !== b.total_correct) return b.total_correct - a.total_correct
@@ -499,4 +513,7 @@ export async function getLeaderboard(limit = 50): Promise<any[]> {
     })
     .slice(0, limit)
     .map((stats, index) => ({ ...stats, rank: index + 1 }))
+
+  console.log("Fallback leaderboard data:", leaderboardData)
+  return leaderboardData
 }
