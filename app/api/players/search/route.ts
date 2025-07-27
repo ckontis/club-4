@@ -8,15 +8,13 @@ export async function GET(request: Request) {
 
     const players = searchPlayers(query)
 
-    // Return players without club information (hide clubs during search)
-    const playersWithoutClubs = players.map((player) => ({
+    // Return players with only name and id (no nationality or position)
+    const cleanPlayers = players.map((player) => ({
       id: player.id,
       name: player.name,
-      nationality: player.nationality,
-      position: player.position,
     }))
 
-    return NextResponse.json({ players: playersWithoutClubs })
+    return NextResponse.json({ players: cleanPlayers })
   } catch (error) {
     console.error("Player search error:", error)
     return NextResponse.json({ error: "Failed to search players" }, { status: 500 })
