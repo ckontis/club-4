@@ -129,6 +129,7 @@ export const CLUB_PAIRS: ClubPair[] = [
 // Fallback storage for when database is not available
 const fallbackUsers = new Map<string, User>()
 const fallbackSessions = new Map<string, QuizSession>()
+const fallbackUserStats = new Map<string, any>()
 
 // Helper functions
 export function generateId(): string {
@@ -421,91 +422,44 @@ export async function updateQuizSession(sessionId: string, updates: Partial<Quiz
   }
 }
 
+// Update user stats when session ends
+export async function updateUserStats(userId: string, username: string, sessionData: QuizSession): Promise<void> {
+  const percentage =
+    sessionData.total_attempts > 0 ? (sessionData.correct_answers / sessionData.total_attempts) * 100 : 0
+
+  const existing = fallbackUserStats.get(userId) || {
+    id: userId,
+    username,
+    is_guest: false,
+    total_correct: 0,
+    total_attempts: 0,
+    best_score: 0,
+    total_sessions: 0,
+    last_played: new Date().toISOString(),
+    average_percentage: 0,
+  }
+
+  // Update stats
+  existing.total_correct += sessionData.correct_answers
+  existing.total_attempts += sessionData.total_attempts
+  existing.best_score = Math.max(existing.best_score, sessionData.correct_answers)
+  existing.total_sessions += 1
+  existing.last_played = sessionData.ended_at || new Date().toISOString()
+  existing.average_percentage =
+    existing.total_attempts > 0 ? Math.round((existing.total_correct / existing.total_attempts) * 100) : 0
+
+  fallbackUserStats.set(userId, existing)
+  console.log("Updated user stats for:", username, existing)
+}
+
 // Leaderboard
 export async function getLeaderboard(limit = 50): Promise<any[]> {
-  const dbInitialized = await initializeDatabase()
+  console.log("Getting leaderboard...")
+  console.log("Fallback user stats:", Array.from(fallbackUserStats.entries()))
+  console.log("Fallback sessions:", Array.from(fallbackSessions.entries()))
 
-  if (dbInitialized && sql) {
-    try {
-      const result = await sql`
-        SELECT 
-          u.id,
-          u.username,
-          u.is_guest,
-          COALESCE(SUM(qs.correct_answers), 0) as total_correct,
-          COALESCE(SUM(qs.total_attempts), 0) as total_attempts,
-          COALESCE(MAX(qs.correct_answers), 0) as best_score,
-          COALESCE(COUNT(CASE WHEN qs.ended_at IS NOT NULL THEN 1 END), 0) as total_sessions,
-          COALESCE(MAX(qs.ended_at), u.created_at) as last_played,
-          CASE 
-            WHEN SUM(qs.total_attempts) > 0 
-            THEN ROUND((SUM(qs.correct_answers)::DECIMAL / SUM(qs.total_attempts) * 100), 1)
-            ELSE 0 
-          END as average_percentage
-        FROM users u
-        LEFT JOIN quiz_sessions qs ON u.id = qs.user_id AND qs.ended_at IS NOT NULL
-        GROUP BY u.id, u.username, u.is_guest, u.created_at
-        HAVING COALESCE(SUM(qs.correct_answers), 0) > 0
-        ORDER BY total_correct DESC, average_percentage DESC, last_played DESC
-        LIMIT ${limit}
-      `
-
-      if (result.length > 0) {
-        return result.map((row, index) => ({
-          id: row.id,
-          username: row.username,
-          is_guest: row.is_guest,
-          correct_answers: Number.parseInt(row.total_correct),
-          total_attempts: Number.parseInt(row.total_attempts),
-          average_percentage: Number.parseFloat(row.average_percentage),
-          best_score: Number.parseInt(row.best_score),
-          total_sessions: Number.parseInt(row.total_sessions),
-          last_played: row.last_played,
-          rank: index + 1,
-        }))
-      }
-    } catch (error) {
-      console.error("Error getting leaderboard from database:", error)
-    }
-  }
-
-  // Always use fallback storage
-  console.log("Using fallback storage for leaderboard")
-  const userStats = new Map<string, any>()
-
-  // Process all completed sessions
-  for (const [, session] of fallbackSessions) {
-    if (!session.user_id || !session.ended_at) continue
-
-    const user = fallbackUsers.get(session.user_id)
-    if (!user) continue
-
-    const existing = userStats.get(session.user_id) || {
-      id: user.id,
-      username: user.username,
-      is_guest: user.is_guest,
-      total_correct: 0,
-      total_attempts: 0,
-      best_score: 0,
-      total_sessions: 0,
-      last_played: user.created_at,
-    }
-
-    existing.total_correct += session.correct_answers
-    existing.total_attempts += session.total_attempts
-    existing.best_score = Math.max(existing.best_score, session.correct_answers)
-    existing.total_sessions += 1
-    existing.last_played = session.ended_at || existing.last_played
-
-    userStats.set(session.user_id, existing)
-  }
-
-  const leaderboardData = Array.from(userStats.values())
+  const leaderboardData = Array.from(fallbackUserStats.values())
     .filter((stats) => stats.total_correct > 0)
-    .map((stats) => ({
-      ...stats,
-      average_percentage: stats.total_attempts > 0 ? Math.round((stats.total_correct / stats.total_attempts) * 100) : 0,
-    }))
     .sort((a, b) => {
       if (a.total_correct !== b.total_correct) return b.total_correct - a.total_correct
       if (a.average_percentage !== b.average_percentage) return b.average_percentage - a.average_percentage
@@ -514,6 +468,6 @@ export async function getLeaderboard(limit = 50): Promise<any[]> {
     .slice(0, limit)
     .map((stats, index) => ({ ...stats, rank: index + 1 }))
 
-  console.log("Fallback leaderboard data:", leaderboardData)
+  console.log("Final leaderboard data:", leaderboardData)
   return leaderboardData
 }

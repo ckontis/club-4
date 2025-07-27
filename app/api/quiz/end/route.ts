@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getQuizSession, updateQuizSession } from "@/lib/database"
+import { getQuizSession, updateQuizSession, updateUserStats } from "@/lib/database"
 
 export async function POST(request: Request) {
   try {
@@ -14,28 +14,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 })
     }
 
-    // If ending without answering current question, count it as wrong
-    const finalCorrectAnswers = session.correct_answers
-    let finalTotalAttempts = session.total_attempts
-
-    // If there's an active question that hasn't been answered, count it as wrong
-    if (session.is_active && session.total_attempts === session.used_questions.length - 1) {
-      finalTotalAttempts += 1
-    }
-
+    // Mark session as ended
+    const endedAt = new Date().toISOString()
     await updateQuizSession(sessionId, {
       is_active: false,
-      ended_at: new Date().toISOString(),
-      correct_answers: finalCorrectAnswers,
-      total_attempts: finalTotalAttempts,
+      ended_at: endedAt,
     })
+
+    // Update user stats if user exists
+    if (session.user_id && session.username) {
+      const updatedSession = { ...session, ended_at: endedAt, is_active: false }
+      await updateUserStats(session.user_id, session.username, updatedSession)
+      console.log("Updated stats for user:", session.username)
+    }
 
     return NextResponse.json({
       success: true,
       finalScore: {
-        correct: finalCorrectAnswers,
-        total: finalTotalAttempts,
-        percentage: finalTotalAttempts > 0 ? Math.round((finalCorrectAnswers / finalTotalAttempts) * 100) : 0,
+        correct: session.correct_answers,
+        total: session.total_attempts,
+        percentage:
+          session.total_attempts > 0 ? Math.round((session.correct_answers / session.total_attempts) * 100) : 0,
       },
     })
   } catch (error) {
