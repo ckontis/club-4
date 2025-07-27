@@ -1,0 +1,9 @@
+[
+  {
+    "id": 1,
+    "name": "Cristiano Ronaldo",
+    "clubs": ["Sporting CP", "Manchester United", "Real Madrid", "Juventus", "Al Nassr"],
+    "nationality": "Portugal",
+    "position": "Forward"
+  }
+]

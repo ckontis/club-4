@@ -8,22 +8,30 @@ export async function GET(request: Request) {
     // Check if we should add test data (for debugging)
     const { searchParams } = new URL(request.url)
     if (searchParams.get("test") === "true") {
-      addTestLeaderboardData()
+      console.log("Test mode enabled - adding test data")
+      await addTestLeaderboardData()
     }
 
     const leaderboard = await getLeaderboard(50)
 
     console.log("Returning leaderboard with", leaderboard.length, "entries")
 
-    return NextResponse.json({ leaderboard })
+    // Always return valid JSON, even if empty
+    return NextResponse.json({
+      success: true,
+      leaderboard: leaderboard || [],
+    })
   } catch (error) {
     console.error("Leaderboard error:", error)
+
+    // Always return valid JSON on error
     return NextResponse.json(
       {
+        success: false,
         error: "Failed to get leaderboard",
         leaderboard: [], // Return empty array as fallback
       },
-      { status: 200 },
+      { status: 200 }, // Return 200 to avoid JSON parsing issues
     )
   }
 }

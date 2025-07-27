@@ -22,6 +22,7 @@ interface LeaderboardEntry {
 export function Leaderboard() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchLeaderboard()
@@ -29,11 +30,27 @@ export function Leaderboard() {
 
   const fetchLeaderboard = async () => {
     setLoading(true)
+    setError(null)
+
     try {
       console.log("Fetching leaderboard from API...")
       const response = await fetch("/api/leaderboard")
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const contentType = response.headers.get("content-type")
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Response is not JSON")
+      }
+
       const data = await response.json()
       console.log("Leaderboard API response:", data)
+
+      if (data.success === false) {
+        throw new Error(data.error || "Failed to fetch leaderboard")
+      }
 
       // Normalize the data to handle both field names
       const normalizedData = (data.leaderboard || []).map((entry: any) => ({
@@ -44,6 +61,7 @@ export function Leaderboard() {
       setLeaderboard(normalizedData)
     } catch (error) {
       console.error("Error fetching leaderboard:", error)
+      setError(error instanceof Error ? error.message : "Failed to load leaderboard")
       setLeaderboard([])
     } finally {
       setLoading(false)
@@ -118,6 +136,26 @@ export function Leaderboard() {
           <div className="text-center space-y-4">
             <RefreshCw className="w-10 h-10 animate-spin mx-auto text-blue-500" />
             <div className="text-lg font-medium text-gray-600">Loading leaderboard...</div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="shadow-xl border-0 h-fit">
+        <CardHeader className="bg-gradient-to-r from-red-600 via-red-600 to-red-700 text-white">
+          <CardTitle className="text-2xl font-bold">Leaderboard Error</CardTitle>
+        </CardHeader>
+        <CardContent className="p-8">
+          <div className="text-center space-y-4">
+            <div className="text-red-600 text-lg">Failed to load leaderboard</div>
+            <div className="text-sm text-gray-600">{error}</div>
+            <Button onClick={fetchLeaderboard} className="mt-4">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Try Again
+            </Button>
           </div>
         </CardContent>
       </Card>
